@@ -3,7 +3,8 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   output: 'export',
   trailingSlash: true,
-  basePath: process.env.NODE_ENV === 'production' ? '/nombre-de-tu-repo' : '',
+  basePath: '/BloqueFactorizacion',
+  assetPrefix: '/BloqueFactorizacion',
   images: {
     unoptimized: true,
     remotePatterns: [
