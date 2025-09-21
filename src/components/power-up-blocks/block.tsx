@@ -47,7 +47,7 @@ const SquareMoldContent = ({ block }: { block: MoldBlock }) => {
           key={unit.key}
           className={cn(
             "w-full h-full rounded-sm transition-colors duration-300",
-            block.filledValue && index < block.filledValue ? 'bg-primary/80' : 'bg-muted/20'
+            block.filledValue && index < block.filledValue ? 'bg-primary/80' : 'bg-muted/30'
           )}
         />
       ))}
@@ -115,12 +115,12 @@ const CubeMoldContent = ({ block }: { block: CubeMoldBlock }) => {
           >
             {units.map(unit => (
               <div key={unit.key} className="absolute" style={{...unit.style, transformStyle: 'preserve-3d' }}>
-                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(0deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.7)' : 'hsl(var(--muted) / 0.15)' }}></div>
-                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.8)' : 'hsl(var(--muted) / 0.15)' }}></div>
-                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(180deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.7)' : 'hsl(var(--muted) / 0.15)' }}></div>
-                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(-90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.8)' : 'hsl(var(--muted) / 0.15)' }}></div>
-                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateX(90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.9)' : 'hsl(var(--muted) / 0.15)' }}></div>
-                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateX(-90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--muted) / 0.15)' }}></div>
+                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(0deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.7)' : 'hsl(var(--muted) / 0.25)' }}></div>
+                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.8)' : 'hsl(var(--muted) / 0.25)' }}></div>
+                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(180deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.7)' : 'hsl(var(--muted) / 0.25)' }}></div>
+                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(-90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.8)' : 'hsl(var(--muted) / 0.25)' }}></div>
+                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateX(90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.9)' : 'hsl(var(--muted) / 0.25)' }}></div>
+                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateX(-90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--muted) / 0.25)' }}></div>
               </div>
             ))}
           </div>
@@ -207,10 +207,10 @@ const BlockComponent = React.memo(function BlockComponent({
         "absolute flex items-center justify-center cursor-pointer active:cursor-grabbing rounded-2xl shadow-2xl transition-all duration-300 ease-in-out select-none group border-2",
         "hover:scale-105 hover:shadow-primary/40",
         {
-          "bg-secondary/50 text-secondary-foreground border-secondary/50 backdrop-blur-sm": block.type === "simple",
+          "bg-secondary text-secondary-foreground border-secondary backdrop-blur-sm": block.type === "simple",
           "bg-accent/80 text-accent-foreground border-accent backdrop-blur-sm": block.type === "product",
           "bg-primary/80 text-primary-foreground border-primary backdrop-blur-sm": block.type === "power",
-          "bg-card/30 border-dashed border-border/50 hover:border-primary backdrop-blur-sm": block.type === "mold",
+          "bg-card/80 border-dashed border-border/50 hover:border-primary backdrop-blur-sm": block.type === "mold",
           "border-green-500 border-solid shadow-green-500/30": isPerfectFit,
         }
       )}
