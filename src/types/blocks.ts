@@ -48,5 +48,15 @@ export type CubeMoldBlock = MoldBlockBase & {
 
 export type MoldBlock = SquareMoldBlock | CubeMoldBlock;
 
+export type AbacusRow = {
+  value: number;
+  beads: number;
+};
 
-export type Block = NumberBlock | MoldBlock;
+export type AbacusBlock = BlockBase & {
+  type: 'abacus';
+  rows: AbacusRow[];
+};
+
+
+export type Block = NumberBlock | MoldBlock | AbacusBlock;

@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import type { Block, PowerBlock, SimpleBlock, ProductBlock, MoldBlock, NumberBlock, MoldType, CubeMoldBlock, SquareMoldBlock } from "@/types/blocks";
+import type { Block, PowerBlock, SimpleBlock, ProductBlock, MoldBlock, NumberBlock, MoldType, CubeMoldBlock, SquareMoldBlock, AbacusBlock, AbacusRow } from "@/types/blocks";
 import { getFactors, isValidFactor } from "@/lib/math-utils";
 import { useToast } from "@/hooks/use-toast";
 
 import Canvas from "./canvas";
 import Controls from "./controls";
 import PerfectMold from './perfect-mold';
+import AbacusTool from "./abacus-tool";
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+const GRID_SIZE = 20;
 
 export default function PowerUpBlocks() {
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -21,6 +24,7 @@ export default function PowerUpBlocks() {
 
   const [isBlocksPanelOpen, setBlocksPanelOpen] = useState(true);
   const [isMoldsPanelOpen, setMoldsPanelOpen] = useState(true);
+  const [isAbacusPanelOpen, setAbacusPanelOpen] = useState(true);
   const [factorMode, setFactorMode] = useState<'AUTOMATICO' | 'MANUAL'>('MANUAL');
   
   const [factoringModalState, setFactoringModalState] = useState<{
@@ -33,21 +37,38 @@ export default function PowerUpBlocks() {
     customFactor: '',
   });
 
+  const getNextGridPosition = useCallback((baseX: number, baseY: number) => {
+    return {
+      x: Math.round(baseX / GRID_SIZE) * GRID_SIZE,
+      y: Math.round(baseY / GRID_SIZE) * GRID_SIZE,
+    }
+  }, []);
+
   const handleAddBlock = useCallback(
     (value: number) => {
+      const { x, y } = getNextGridPosition(
+        Math.random() * ((canvasRef.current?.clientWidth ?? window.innerWidth) - 450),
+        Math.random() * ((canvasRef.current?.clientHeight ?? window.innerHeight) - 220)
+      );
+
       const newBlock: SimpleBlock = {
         id: `block-${Date.now()}`,
         type: "simple",
         value,
-        x: Math.random() * ( (canvasRef.current?.clientWidth ?? window.innerWidth) - 450),
-        y: Math.random() * ((canvasRef.current?.clientHeight ?? window.innerHeight) - 220),
+        x,
+        y,
       };
       setBlocks((prev) => [...prev, newBlock]);
     },
-    []
+    [getNextGridPosition]
   );
 
   const handleAddMold = useCallback((moldType: MoldType, side: number) => {
+      const { x, y } = getNextGridPosition(
+        Math.random() * ((canvasRef.current?.clientWidth ?? window.innerWidth) - 450),
+        Math.random() * ((canvasRef.current?.clientHeight ?? window.innerHeight) - 220)
+      );
+    
       let newMold: MoldBlock;
       if (moldType === 'cuadrado') {
         newMold = {
@@ -59,8 +80,8 @@ export default function PowerUpBlocks() {
           filledById: null,
           filledValue: null,
           surplus: 0,
-          x: Math.random() * ( (canvasRef.current?.clientWidth ?? window.innerWidth) - 450),
-          y: Math.random() * ((canvasRef.current?.clientHeight ?? window.innerHeight) - 220),
+          x,
+          y,
         } as SquareMoldBlock;
       } else { // 'cubo'
         newMold = {
@@ -72,62 +93,143 @@ export default function PowerUpBlocks() {
           filledById: null,
           filledValue: null,
           surplus: 0,
-          x: Math.random() * ( (canvasRef.current?.clientWidth ?? window.innerWidth) - 450),
-          y: Math.random() * ((canvasRef.current?.clientHeight ?? window.innerHeight) - 220),
+          x,
+          y,
         } as CubeMoldBlock;
       }
       setBlocks((prev) => [...prev, newMold]);
+  }, [getNextGridPosition]);
+
+  const handleAddAbacus = useCallback(() => {
+    const { x, y } = getNextGridPosition(
+      Math.random() * ((canvasRef.current?.clientWidth ?? window.innerWidth) - 550),
+      Math.random() * ((canvasRef.current?.clientHeight ?? window.innerHeight) - 320)
+    );
+    const newAbacus: AbacusBlock = {
+      id: `abacus-${Date.now()}`,
+      type: 'abacus',
+      rows: [{ value: 1, beads: 0 }],
+      x,
+      y,
+    };
+    setBlocks(prev => [...prev, newAbacus]);
+  }, [getNextGridPosition]);
+
+  const handleAbacusChange = useCallback((updatedAbacus: AbacusBlock) => {
+    let needsUpdate = true;
+    let newRows = [...updatedAbacus.rows];
+
+    while (needsUpdate) {
+        needsUpdate = false;
+        
+        let carryOverOccurred = false;
+
+        newRows.forEach(row => {
+          if (row.beads >= 10) {
+            carryOverOccurred = true;
+            const carryAmount = Math.floor(row.beads / 10);
+            const remainder = row.beads % 10;
+            row.beads = remainder;
+
+            const nextRowValue = row.value * 10;
+            let nextRow = newRows.find(r => r.value === nextRowValue);
+            if(nextRow) {
+                nextRow.beads += carryAmount;
+            } else {
+                newRows.push({ value: nextRowValue, beads: carryAmount });
+            }
+          }
+        });
+        
+        newRows = newRows.sort((a, b) => a.value - b.value);
+
+        if (carryOverOccurred) {
+            needsUpdate = newRows.some(r => r.beads >=10);
+        }
+    }
+    
+    setBlocks(prev => prev.map(b => b.id === updatedAbacus.id ? { ...updatedAbacus, rows: newRows } : b));
   }, []);
+
+  const handleAbacusExport = useCallback((abacusId: string) => {
+    const abacusBlock = blocks.find(b => b.id === abacusId) as AbacusBlock;
+    if (!abacusBlock) return;
+
+    const totalValue = abacusBlock.rows.reduce((sum, row) => sum + (row.beads * row.value), 0);
+
+    if (totalValue <= 0) {
+        toast({ title: "El ábaco está vacío", description: "Añade fichas para poder exportar un número." });
+        return;
+    }
+    
+    const { x, y } = getNextGridPosition(abacusBlock.x + 340, abacusBlock.y);
+
+    const newBlock: SimpleBlock = {
+      id: `block-${Date.now()}`,
+      type: "simple",
+      value: totalValue,
+      x,
+      y,
+    };
+
+    setBlocks((prev) => prev.map(b => 
+        b.id === abacusId 
+        ? { ...abacusBlock, rows: [{ value: 1, beads: 0 }] }
+        : b
+    ).concat(newBlock));
+
+
+  }, [blocks, getNextGridPosition, toast]);
 
   const releaseBlockFromMold = useCallback((moldId: string) => {
     setBlocks(prev => {
       const mold = prev.find(b => b.id === moldId) as MoldBlock | undefined;
       if (!mold || !mold.filledById) return prev;
-
-      const originalBlock = prev.find(b => b.id === mold.filledById);
-      if (originalBlock) return prev; // Block already exists, something is wrong.
       
       const value = mold.filledValue!;
+      const { x, y } = getNextGridPosition(mold.x, mold.y);
 
-      // Find the original block type to restore it correctly
-      let originalType: NumberBlock['type'] = 'simple';
-      if (mold.originalBlockType === 'power') originalType = 'power';
-      if (mold.originalBlockType === 'product') originalType = 'product';
+      // Restore the original block, if it was complex. Otherwise, create a new simple one.
+      const restoredBlockId = mold.filledById;
+      const originalBlockExists = prev.some(b => b.id === restoredBlockId);
 
-      let newBlock: NumberBlock;
-
-      if (originalType === 'power' && mold.originalBlockState) {
-        newBlock = {
-          ...mold.originalBlockState as PowerBlock,
-          id: mold.filledById,
-          x: mold.x,
-          y: mold.y,
-        };
-      } else if (originalType === 'product' && mold.originalBlockState) {
-        newBlock = {
-          ...mold.originalBlockState as ProductBlock,
-          id: mold.filledById,
-          x: mold.x,
-          y: mold.y,
-        };
-      } else {
-        newBlock = {
-          id: mold.filledById,
-          type: 'simple',
-          value,
-          x: mold.x,
-          y: mold.y,
-        };
+      let newBlock: NumberBlock | null = null;
+      if (!originalBlockExists) {
+        if (mold.originalBlockType === 'power' && mold.originalBlockState) {
+          newBlock = {
+            ...(mold.originalBlockState as PowerBlock),
+            id: restoredBlockId,
+            x, y,
+          };
+        } else if (mold.originalBlockType === 'product' && mold.originalBlockState) {
+          newBlock = {
+            ...(mold.originalBlockState as ProductBlock),
+            id: restoredBlockId,
+            x, y,
+          };
+        } else {
+          newBlock = {
+            id: restoredBlockId,
+            type: 'simple',
+            value,
+            x, y,
+          };
+        }
       }
 
-
-      return prev.map(b => 
+      const updatedBlocks = prev.map(b => 
         b.id === moldId 
         ? { ...b, filledById: null, filledValue: null, surplus: 0, originalBlockType: undefined, originalBlockState: undefined } 
         : b
-      ).concat(newBlock);
+      );
+      
+      if (newBlock) {
+        updatedBlocks.push(newBlock);
+      }
+      
+      return updatedBlocks;
     });
-  }, []);
+  }, [getNextGridPosition]);
   
   const factorBlock = useCallback((block: NumberBlock, factors?: [number, number]) => {
       const factorsToUse = factors || getFactors(block.value);
@@ -190,6 +292,10 @@ export default function PowerUpBlocks() {
     (blockId: string) => {
       const block = blocks.find((b) => b.id === blockId);
       if (!block) return;
+      
+      if (block.type === 'abacus') {
+        return;
+      }
 
       if (block.type === 'mold') {
         if (block.filledById) {
@@ -287,17 +393,76 @@ export default function PowerUpBlocks() {
       const target = blocks.find((b) => b.id === targetId);
 
       if (!dragged || !target) return;
+      
+      // Consume block into Abacus
+      if (dragged.type !== 'abacus' && target.type === 'abacus') {
+        const numberBlock = dragged as NumberBlock;
+        const abacusBlock = target as AbacusBlock;
+        
+        const isAbacusEmpty = abacusBlock.rows.every(r => r.beads === 0);
+        if (!isAbacusEmpty) {
+            toast({ title: "Ábaco Ocupado", description: "El ábaco debe estar vacío para añadir un número."});
+            return;
+        }
+
+        let remainingValue = numberBlock.value;
+
+        const newRows: AbacusRow[] = [];
+        let tempValue = remainingValue;
+        
+        if (tempValue === 0) {
+            newRows.push({ value: 1, beads: 0});
+        } else {
+          let power = 0;
+          while(tempValue > 0 || power < abacusBlock.rows.length) {
+              const placeValue = Math.pow(10, power);
+              const beads = tempValue % 10;
+              
+              const existingRow = abacusBlock.rows.find(r => r.value === placeValue);
+              if (existingRow || beads > 0 || tempValue/10 >= 1) {
+                  newRows.push({ value: placeValue, beads: beads });
+              }
+
+              tempValue = Math.floor(tempValue / 10);
+              power++;
+              if (tempValue === 0 && power >= abacusBlock.rows.length) break;
+          }
+        }
+        
+        const finalRows = newRows.length > 0 ? newRows.sort((a,b) => a.value - b.value) : [{ value: 1, beads: 0 }];
+
+        setBlocks(prev => prev
+            .filter(b => b.id !== draggedId) // consume block
+            .map(b => b.id === abacusBlock.id ? { ...abacusBlock, rows: finalRows } : b)
+        );
+        return;
+      }
 
       // Handle dropping a number block into a mold
-      if (dragged.type !== 'mold' && target.type === 'mold') {
+      if (dragged.type !== 'mold' && dragged.type !== 'abacus' && target.type === 'mold') {
         const numberBlock = dragged as NumberBlock;
         const moldBlock = target as MoldBlock;
 
-        if (moldBlock.filledById) {
-          toast({ variant: 'destructive', title: 'Molde Ocupado', description: 'Este molde ya tiene un número. Haz clic para liberarlo.' });
+        // Multiply if mold already has a value
+        if (moldBlock.filledValue !== null && moldBlock.filledValue > 0) {
+          const newValue = moldBlock.filledValue * numberBlock.value;
+          const surplus = Math.max(0, newValue - moldBlock.capacity);
+          
+          setBlocks(prev => prev
+            .filter(b => b.id !== draggedId) // consume dragged block
+            .map(b => b.id === targetId ? {
+              ...moldBlock,
+              filledValue: newValue,
+              surplus: surplus,
+              // We lose the original block type info on multiplication
+              originalBlockType: 'product',
+              originalBlockState: undefined,
+            } : b)
+          );
           return;
         }
 
+        // Fill if mold is empty
         const surplus = Math.max(0, numberBlock.value - moldBlock.capacity);
         
         setBlocks(prev => prev
@@ -315,8 +480,8 @@ export default function PowerUpBlocks() {
         return;
       }
 
-      // Don't combine molds with anything
-      if (dragged.type === 'mold' || target.type === 'mold') return;
+      // Don't combine molds with anything, or abacus with numbers
+      if (dragged.type === 'mold' || target.type === 'mold' || dragged.type === 'abacus' || target.type === 'abacus') return;
 
       // Existing combine logic for number blocks
       const draggedBlock = dragged as NumberBlock;
@@ -393,7 +558,7 @@ export default function PowerUpBlocks() {
   }, []);
 
 
-  const arePanelsOpen = isBlocksPanelOpen || isMoldsPanelOpen;
+  const arePanelsOpen = isBlocksPanelOpen || isMoldsPanelOpen || isAbacusPanelOpen;
 
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden">
@@ -414,6 +579,11 @@ export default function PowerUpBlocks() {
           isOpen={isMoldsPanelOpen}
           onToggle={() => setMoldsPanelOpen(prev => !prev)}
         />
+        <AbacusTool
+          onAddAbacus={handleAddAbacus}
+          isOpen={isAbacusPanelOpen}
+          onToggle={() => setAbacusPanelOpen(prev => !prev)}
+        />
       </div>
       <div className="flex-1 relative" ref={canvasRef}>
         <Canvas
@@ -424,6 +594,8 @@ export default function PowerUpBlocks() {
           onBlockDelete={handleBlockDelete}
           onBlockDragStart={handleBlockDragStart}
           onBlockDragEnd={handleBlockDragEnd}
+          onAbacusChange={handleAbacusChange}
+          onAbacusExport={handleAbacusExport}
         />
       </div>
       

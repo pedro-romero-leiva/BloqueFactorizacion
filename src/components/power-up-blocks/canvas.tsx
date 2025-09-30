@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useRef } from "react";
-import type { Block } from "@/types/blocks";
+import type { Block, AbacusBlock } from "@/types/blocks";
 import BlockComponent from "./block";
+
+const GRID_SIZE = 20;
 
 interface CanvasProps {
   blocks: Block[];
@@ -12,6 +14,8 @@ interface CanvasProps {
   onBlockDelete: (blockId: string) => void;
   onBlockDragStart: (e: React.DragEvent<HTMLDivElement>, block: Block) => void;
   onBlockDragEnd: (e: React.DragEvent<HTMLDivElement>) => void;
+  onAbacusChange: (updatedAbacus: AbacusBlock) => void;
+  onAbacusExport: (blockId: string) => void;
 }
 
 export default function Canvas({
@@ -21,7 +25,9 @@ export default function Canvas({
   onBlockMove,
   onBlockDelete,
   onBlockDragStart,
-  onBlockDragEnd
+  onBlockDragEnd,
+  onAbacusChange,
+  onAbacusExport,
 }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -39,14 +45,31 @@ export default function Canvas({
       simple: { width: 150, height: 120 },
       product: { width: 150, height: 120 },
       power: { width: 150, height: 120 },
+      abacus: { width: 320, height: 100 }, // Height is dynamic, use an estimate
     };
     
-    const size = block.type === 'mold' ? blockSize[block.moldType] : blockSize[block.type];
+    let size;
+    if (block.type === 'mold') {
+      size = blockSize[block.moldType];
+    } else if (block.type === 'abacus') {
+      const abacusBlock = block as AbacusBlock;
+      const rowHeight = 32; // from abacus-row h-6 (24px) + gap (8px)
+      const headerHeight = 40; // from abacus h-8 (32px) + gap
+      const dynamicHeight = headerHeight + (abacusBlock.rows.length * rowHeight);
+      size = { width: blockSize.abacus.width, height: dynamicHeight};
+    }
+    else {
+      size = blockSize[block.type as keyof typeof blockSize];
+    }
 
     const canvasRect = canvasRef.current.getBoundingClientRect();
 
-    const x = e.clientX - canvasRect.left - (size.width / 2);
-    const y = e.clientY - canvasRect.top - (size.height / 2);
+    let x = e.clientX - canvasRect.left - (size.width / 2);
+    let y = e.clientY - canvasRect.top - (size.height / 2);
+    
+    // Snap to grid
+    x = Math.round(x / GRID_SIZE) * GRID_SIZE;
+    y = Math.round(y / GRID_SIZE) * GRID_SIZE;
 
     onBlockMove(blockId, x, y);
     onBlockDragEnd(e);
@@ -72,6 +95,8 @@ export default function Canvas({
           onDelete={onBlockDelete}
           onDragStart={onBlockDragStart}
           onDragEnd={onBlockDragEnd}
+          onAbacusChange={onAbacusChange}
+          onAbacusExport={onAbacusExport}
         />
       ))}
     </div>

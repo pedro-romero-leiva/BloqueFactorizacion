@@ -2,10 +2,11 @@
 
 import React, { useState } from "react";
 import { X, Minus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from "lucide-react";
-import type { Block, MoldBlock, NumberBlock, CubeMoldBlock } from "@/types/blocks";
+import type { Block, MoldBlock, NumberBlock, CubeMoldBlock, AbacusBlock } from "@/types/blocks";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import AbacusComponent from "./abacus";
 
 interface BlockProps {
   block: Block;
@@ -14,6 +15,8 @@ interface BlockProps {
   onDelete: (blockId: string) => void;
   onDragStart: (e: React.DragEvent<HTMLDivElement>, block: Block) => void;
   onDragEnd: (e: React.DragEvent<HTMLDivElement>) => void;
+  onAbacusChange?: (updatedAbacus: AbacusBlock) => void;
+  onAbacusExport?: (blockId: string) => void;
 }
 
 const NumberBlockContent = ({ block }: { block: NumberBlock }) => {
@@ -47,7 +50,7 @@ const SquareMoldContent = ({ block }: { block: MoldBlock }) => {
           key={unit.key}
           className={cn(
             "w-full h-full rounded-sm transition-colors duration-300",
-            block.filledValue && index < block.filledValue ? 'bg-primary/80' : 'bg-muted/30'
+            block.filledValue && index < block.filledValue ? 'bg-primary/80' : 'bg-muted/20'
           )}
         />
       ))}
@@ -115,12 +118,12 @@ const CubeMoldContent = ({ block }: { block: CubeMoldBlock }) => {
           >
             {units.map(unit => (
               <div key={unit.key} className="absolute" style={{...unit.style, transformStyle: 'preserve-3d' }}>
-                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(0deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.7)' : 'hsl(var(--muted) / 0.25)' }}></div>
-                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.8)' : 'hsl(var(--muted) / 0.25)' }}></div>
-                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(180deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.7)' : 'hsl(var(--muted) / 0.25)' }}></div>
-                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(-90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.8)' : 'hsl(var(--muted) / 0.25)' }}></div>
-                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateX(90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.9)' : 'hsl(var(--muted) / 0.25)' }}></div>
-                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateX(-90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--muted) / 0.25)' }}></div>
+                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(0deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.7)' : 'hsl(var(--muted) / 0.20)' }}></div>
+                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.8)' : 'hsl(var(--muted) / 0.20)' }}></div>
+                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(180deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.7)' : 'hsl(var(--muted) / 0.20)' }}></div>
+                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateY(-90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.8)' : 'hsl(var(--muted) / 0.20)' }}></div>
+                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateX(90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.9)' : 'hsl(var(--muted) / 0.20)' }}></div>
+                <div className="cube-face-mini" style={{ width: `${miniCubeSize}px`, height: `${miniCubeSize}px`, transform: `rotateX(-90deg) translateZ(${miniCubeSize/2}px)`, backgroundColor: unit.isFilled ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--muted) / 0.20)' }}></div>
               </div>
             ))}
           </div>
@@ -142,7 +145,9 @@ const BlockComponent = React.memo(function BlockComponent({
   onDrop,
   onDelete,
   onDragStart,
-  onDragEnd
+  onDragEnd,
+  onAbacusChange,
+  onAbacusExport,
 }: BlockProps) {
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData("blockId", block.id);
@@ -182,6 +187,7 @@ const BlockComponent = React.memo(function BlockComponent({
 
   const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
+    if (block.type === 'abacus') return;
     onDelete(block.id);
   };
   
@@ -190,9 +196,17 @@ const BlockComponent = React.memo(function BlockComponent({
   const blockSize = {
     cuadrado: { width: 280, height: 280 },
     cubo: { width: 280, height: 280 },
+    abacus: { width: 320, height: 'auto' },
   }
-  const size = block.type === 'mold' ? blockSize[block.moldType] : { width: 150, height: 120 };
-
+  
+  let size;
+  if (block.type === 'mold') {
+    size = blockSize[block.moldType];
+  } else if (block.type === 'abacus') {
+    size = blockSize.abacus;
+  } else {
+    size = { width: 150, height: 120 };
+  }
 
   return (
     <Card
@@ -205,20 +219,21 @@ const BlockComponent = React.memo(function BlockComponent({
       onContextMenu={handleContextMenu}
       className={cn(
         "absolute flex items-center justify-center cursor-pointer active:cursor-grabbing rounded-2xl shadow-2xl transition-all duration-300 ease-in-out select-none group border-2",
-        "hover:scale-105 hover:shadow-primary/40",
+        block.type !== 'abacus' && "hover:scale-105 hover:shadow-primary/40",
         {
           "bg-secondary text-secondary-foreground border-secondary backdrop-blur-sm": block.type === "simple",
           "bg-accent/80 text-accent-foreground border-accent backdrop-blur-sm": block.type === "product",
           "bg-primary/80 text-primary-foreground border-primary backdrop-blur-sm": block.type === "power",
-          "bg-card/80 border-dashed border-border/50 hover:border-primary backdrop-blur-sm": block.type === "mold",
+          "bg-card/90 border-dashed border-border/50 hover:border-primary backdrop-blur-sm": block.type === "mold",
           "border-green-500 border-solid shadow-green-500/30": isPerfectFit,
+          "bg-card/90 border-border/50 p-2": block.type === 'abacus'
         }
       )}
       style={{
         left: block.x,
         top: block.y,
         width: `${size.width}px`,
-        height: `${size.height}px`,
+        height: size.height === 'auto' ? 'auto' : `${size.height}px`,
         transition: 'transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, left 0.3s ease, top 0.3s ease, border-color 0.3s ease',
         animation: `bounce-in 0.5s ease-out`
       }}
@@ -228,7 +243,9 @@ const BlockComponent = React.memo(function BlockComponent({
           ? <SquareMoldContent block={block} />
           : block.type === 'mold' && block.moldType === 'cubo'
           ? <CubeMoldContent block={block} />
-          : block.type !== 'mold'
+          : block.type === 'abacus' && onAbacusChange && onAbacusExport
+          ? <AbacusComponent block={block} onChange={onAbacusChange} onExport={onAbacusExport} onDelete={onDelete}/>
+          : block.type !== 'mold' && block.type !== 'abacus'
           ? <NumberBlockContent block={block as NumberBlock} />
           : null
         }
@@ -238,13 +255,15 @@ const BlockComponent = React.memo(function BlockComponent({
           </div>
         )}
       </CardContent>
-      <button 
-        onClick={(e) => { e.stopPropagation(); onDelete(block.id); }}
-        className="absolute top-2 right-2 w-7 h-7 bg-black/30 rounded-full flex items-center justify-center text-white/70 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-black/50 hover:text-white hover:scale-110 z-20"
-        aria-label="Eliminar bloque"
-      >
-        {block.type === 'mold' && block.filledById ? <Minus className="w-4 h-4" /> : <X className="w-4 h-4" />}
-      </button>
+      { block.type !== 'abacus' && (
+        <button 
+          onClick={(e) => { e.stopPropagation(); onDelete(block.id); }}
+          className="absolute top-2 right-2 w-7 h-7 bg-black/30 rounded-full flex items-center justify-center text-white/70 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-black/50 hover:text-white hover:scale-110 z-20"
+          aria-label="Eliminar bloque"
+        >
+          {block.type === 'mold' && block.filledById ? <Minus className="w-4 h-4" /> : <X className="w-4 h-4" />}
+        </button>
+      )}
     </Card>
   );
 });
