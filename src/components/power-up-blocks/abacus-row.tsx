@@ -22,9 +22,8 @@ const AbacusRowComponent: React.FC<AbacusRowProps> = ({ row, color, onBeadChange
   };
 
   const handleSubtract = () => {
-    if (row.beads > 0) {
-      onBeadChange(row.beads - 1);
-    }
+    // Allow going to -1 temporarily to trigger borrow logic in the parent
+    onBeadChange(row.beads - 1);
   };
 
   const exponent = Math.log10(row.value);

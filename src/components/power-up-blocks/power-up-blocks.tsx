@@ -117,35 +117,67 @@ export default function PowerUpBlocks() {
   }, [getNextGridPosition]);
 
   const handleAbacusChange = useCallback((updatedAbacus: AbacusBlock) => {
-    let needsUpdate = true;
-    let newRows = [...updatedAbacus.rows];
-
-    while (needsUpdate) {
-        needsUpdate = false;
+    let newRows = [...updatedAbacus.rows].sort((a, b) => a.value - b.value);
+    
+    // --- Borrowing logic (subtraction) ---
+    let borrowNeeded = true;
+    while (borrowNeeded) {
+        borrowNeeded = false;
+        const rowIndexToBorrow = newRows.findIndex(r => r.beads < 0);
         
-        let carryOverOccurred = false;
-
-        newRows.forEach(row => {
-          if (row.beads >= 10) {
-            carryOverOccurred = true;
-            const carryAmount = Math.floor(row.beads / 10);
-            const remainder = row.beads % 10;
-            row.beads = remainder;
-
-            const nextRowValue = row.value * 10;
-            let nextRow = newRows.find(r => r.value === nextRowValue);
-            if(nextRow) {
-                nextRow.beads += carryAmount;
-            } else {
-                newRows.push({ value: nextRowValue, beads: carryAmount });
+        if (rowIndexToBorrow !== -1) {
+            const totalValue = newRows.reduce((sum, r) => sum + (r.beads * r.value), 0);
+            if (totalValue < 0) {
+              // This prevents going into negative values. We revert the last change.
+              newRows[rowIndexToBorrow].beads = 0;
+              break; 
             }
-          }
-        });
-        
-        newRows = newRows.sort((a, b) => a.value - b.value);
 
-        if (carryOverOccurred) {
-            needsUpdate = newRows.some(r => r.beads >=10);
+            // Find the next highest row with beads to borrow from
+            let sourceRowIndex = -1;
+            for (let i = rowIndexToBorrow + 1; i < newRows.length; i++) {
+                if (newRows[i].beads > 0) {
+                    sourceRowIndex = i;
+                    break;
+                }
+            }
+
+            if (sourceRowIndex !== -1) {
+                // Borrow down to the target row
+                for (let i = sourceRowIndex; i > rowIndexToBorrow; i--) {
+                    newRows[i].beads -= 1;
+                    newRows[i-1].beads += 10;
+                }
+                borrowNeeded = true; // Check if more borrowing is needed
+            } else {
+                // Cannot borrow, revert change
+                newRows[rowIndexToBorrow].beads = 0;
+            }
+        }
+    }
+
+
+    // --- Carry-over logic (addition) ---
+    let carryNeeded = true;
+    while (carryNeeded) {
+        carryNeeded = false;
+        newRows.forEach((row, index) => {
+            if (row.beads >= 10) {
+                carryNeeded = true;
+                const carryAmount = Math.floor(row.beads / 10);
+                const remainder = row.beads % 10;
+                row.beads = remainder;
+
+                if (index + 1 < newRows.length) {
+                    newRows[index + 1].beads += carryAmount;
+                } else {
+                    const nextRowValue = row.value * 10;
+                    newRows.push({ value: nextRowValue, beads: carryAmount });
+                }
+            }
+        });
+        if (carryNeeded) {
+          newRows.sort((a, b) => a.value - b.value);
         }
     }
     
@@ -403,22 +435,26 @@ export default function PowerUpBlocks() {
         const currentValue = abacusBlock.rows.reduce((sum, row) => sum + (row.beads * row.value), 0);
         let newValue = currentValue + numberBlock.value;
 
+        // Ensure we have enough rows to represent the new value
         const newRows: AbacusRow[] = [...abacusBlock.rows].map(r => ({ ...r, beads: 0 }));
-
-        let power = 0;
-        while(newValue > 0) {
-            const placeValue = Math.pow(10, power);
-            const beads = newValue % 10;
-            
-            let row = newRows.find(r => r.value === placeValue);
-            if (row) {
-                row.beads = beads;
-            } else {
-                newRows.push({ value: placeValue, beads: beads });
+        let maxPlaceValue = newRows.reduce((max, row) => Math.max(max, row.value), 0);
+        while (maxPlaceValue < newValue && newValue > 0) {
+            maxPlaceValue *= 10;
+            if (maxPlaceValue === 0) maxPlaceValue = 1;
+            if (!newRows.some(r => r.value === maxPlaceValue)) {
+                newRows.push({ value: maxPlaceValue, beads: 0 });
             }
+        }
+        newRows.sort((a,b) => a.value - b.value);
 
-            newValue = Math.floor(newValue / 10);
-            power++;
+        // Deconstruct the new value into beads
+        for (let i = newRows.length - 1; i >= 0; i--) {
+            const row = newRows[i];
+            if (newValue >= row.value) {
+                const beads = Math.floor(newValue / row.value);
+                row.beads = beads;
+                newValue %= row.value;
+            }
         }
         
         const finalRows = newRows.length > 0 ? newRows.sort((a,b) => a.value - b.value) : [{ value: 1, beads: 0 }];
