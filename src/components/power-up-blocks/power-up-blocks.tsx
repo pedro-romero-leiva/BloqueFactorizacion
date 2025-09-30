@@ -89,6 +89,7 @@ export default function PowerUpBlocks() {
           type: 'mold',
           moldType: 'cubo',
           side,
+          side: side,
           capacity: side * side * side,
           filledById: null,
           filledValue: null,
@@ -174,7 +175,7 @@ export default function PowerUpBlocks() {
 
     setBlocks((prev) => prev.map(b => 
         b.id === abacusId 
-        ? { ...abacusBlock, rows: [{ value: 1, beads: 0 }] }
+        ? { ...abacusBlock, rows: abacusBlock.rows.map(r => ({ ...r, beads: 0 })) }
         : b
     ).concat(newBlock));
 
@@ -399,42 +400,36 @@ export default function PowerUpBlocks() {
         const numberBlock = dragged as NumberBlock;
         const abacusBlock = target as AbacusBlock;
         
-        const isAbacusEmpty = abacusBlock.rows.every(r => r.beads === 0);
-        if (!isAbacusEmpty) {
-            toast({ title: "Ábaco Ocupado", description: "El ábaco debe estar vacío para añadir un número."});
-            return;
-        }
+        const currentValue = abacusBlock.rows.reduce((sum, row) => sum + (row.beads * row.value), 0);
+        let newValue = currentValue + numberBlock.value;
 
-        let remainingValue = numberBlock.value;
+        const newRows: AbacusRow[] = [...abacusBlock.rows].map(r => ({ ...r, beads: 0 }));
 
-        const newRows: AbacusRow[] = [];
-        let tempValue = remainingValue;
-        
-        if (tempValue === 0) {
-            newRows.push({ value: 1, beads: 0});
-        } else {
-          let power = 0;
-          while(tempValue > 0 || power < abacusBlock.rows.length) {
-              const placeValue = Math.pow(10, power);
-              const beads = tempValue % 10;
-              
-              const existingRow = abacusBlock.rows.find(r => r.value === placeValue);
-              if (existingRow || beads > 0 || tempValue/10 >= 1) {
-                  newRows.push({ value: placeValue, beads: beads });
-              }
+        let power = 0;
+        while(newValue > 0) {
+            const placeValue = Math.pow(10, power);
+            const beads = newValue % 10;
+            
+            let row = newRows.find(r => r.value === placeValue);
+            if (row) {
+                row.beads = beads;
+            } else {
+                newRows.push({ value: placeValue, beads: beads });
+            }
 
-              tempValue = Math.floor(tempValue / 10);
-              power++;
-              if (tempValue === 0 && power >= abacusBlock.rows.length) break;
-          }
+            newValue = Math.floor(newValue / 10);
+            power++;
         }
         
         const finalRows = newRows.length > 0 ? newRows.sort((a,b) => a.value - b.value) : [{ value: 1, beads: 0 }];
 
+        const updatedAbacus: AbacusBlock = { ...abacusBlock, rows: finalRows };
+
         setBlocks(prev => prev
             .filter(b => b.id !== draggedId) // consume block
-            .map(b => b.id === abacusBlock.id ? { ...abacusBlock, rows: finalRows } : b)
+            .map(b => b.id === abacusBlock.id ? updatedAbacus : b)
         );
+        handleAbacusChange(updatedAbacus); // Trigger carry-over check
         return;
       }
 
@@ -528,7 +523,7 @@ export default function PowerUpBlocks() {
         setBlocks([...remainingBlocks, newBlock]);
       }
     },
-    [blocks, toast]
+    [blocks, toast, handleAbacusChange]
   );
 
   const handleBlockMove = useCallback((blockId: string, x: number, y: number) => {
@@ -564,7 +559,7 @@ export default function PowerUpBlocks() {
     <div className="flex flex-col md:flex-row h-screen overflow-hidden">
       <div 
         className={cn(
-            "flex-shrink-0 bg-card/50 backdrop-blur-sm border-r border-border/50 flex flex-col transition-all duration-300",
+            "flex-shrink-0 bg-card/80 backdrop-blur-sm border-r border-border/50 flex flex-col transition-all duration-300",
             arePanelsOpen ? "w-full md:w-[400px]" : "w-auto"
         )}>
         <Controls 

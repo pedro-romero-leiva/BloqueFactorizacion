@@ -86,8 +86,8 @@ const WelcomeScreen = ({ onStart }: { onStart: () => void }) => {
                             <strong>Ábaco / Contador:</strong>
                             <ul className="list-disc pl-5 mt-2 space-y-2 text-sm">
                                 <li>Usa los botones <strong>+/-</strong> en cada fila para añadir o quitar fichas. Las filas representan potencias: 10⁰, 10¹, 10², etc.</li>
-                                <li>Arrastra un número al ábaco para importarlo (debe estar vacío).</li>
-                                <li>Haz clic en <strong>Exportar</strong> (icono de descarga) para crear un bloque con el valor actual, lo que limpiará el ábaco.</li>
+                                <li>Arrastra un número al ábaco para sumar su valor al total.</li>
+                                <li>Haz clic en el icono de descarga para <strong>Exportar</strong> un bloque con el valor actual, lo que limpiará el ábaco.</li>
                                 <li>Al llegar a 10 fichas, se realiza un <strong>acarreo automático</strong> a la fila superior.</li>
                             </ul>
                           </div>
