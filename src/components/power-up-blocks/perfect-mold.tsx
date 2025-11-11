@@ -28,18 +28,8 @@ export default function PerfectMold({ onAddMold, isOpen, onToggle }: PerfectMold
     onAddMold(moldType, side);
   }
 
-  const handleSideChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSide = Math.max(1, parseInt(e.target.value) || 1);
-    setSide(newSide);
-    if (e.target.value !== '') {
-        window.dispatchEvent(new CustomEvent('tutorial:mold-size-entered', {
-            detail: { size: e.target.value }
-        }));
-    }
-  }
-
   return (
-    <div data-testid="molds-panel" className={cn("p-4 md:p-6 border-t border-border transition-all duration-300", !isOpen && "p-2 md:p-3")}>
+    <div className={cn("p-4 md:p-6 border-t border-border transition-all duration-300", !isOpen && "p-2 md:p-3")}>
         <header 
             className="flex items-center gap-3 cursor-pointer"
             onClick={onToggle}
@@ -57,9 +47,9 @@ export default function PerfectMold({ onAddMold, isOpen, onToggle }: PerfectMold
         <div className="mt-6">
             <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                    <Label htmlFor="tutorial-mold-type">Tipo de Molde</Label>
+                    <Label htmlFor="mold-type">Tipo de Molde</Label>
                     <Select value={moldType} onValueChange={(v) => setMoldType(v as MoldType)}>
-                    <SelectTrigger id="tutorial-mold-type">
+                    <SelectTrigger id="mold-type">
                         <SelectValue placeholder="Selecciona un molde" />
                     </SelectTrigger>
                     <SelectContent>
@@ -69,12 +59,12 @@ export default function PerfectMold({ onAddMold, isOpen, onToggle }: PerfectMold
                     </Select>
                 </div>
                 <div>
-                    <Label htmlFor="tutorial-mold-size">Tamaño del Lado</Label>
+                    <Label htmlFor="side-size">Tamaño del Lado</Label>
                     <Input
-                    id="tutorial-mold-size"
+                    id="side-size"
                     type="number"
                     value={side}
-                    onChange={handleSideChange}
+                    onChange={(e) => setSide(Math.max(1, parseInt(e.target.value) || 1))}
                     min="1"
                     max="10"
                     className="text-base"
@@ -82,7 +72,7 @@ export default function PerfectMold({ onAddMold, isOpen, onToggle }: PerfectMold
                 </div>
             </div>
             
-            <Button id="tutorial-add-mold-btn" onClick={handleAddClick} size="lg" className="w-full text-base font-semibold group text-white">
+            <Button onClick={handleAddClick} size="lg" className="w-full text-base font-semibold group text-white">
                 <Plus className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-90" /> Añadir Molde
             </Button>
         </div>

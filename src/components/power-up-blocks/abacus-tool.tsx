@@ -15,7 +15,7 @@ interface AbacusToolProps {
 export default function AbacusTool({ onAddAbacus, isOpen, onToggle }: AbacusToolProps) {
 
   return (
-    <div data-testid="abacus-panel" className={cn("p-4 md:p-6 border-t border-border transition-all duration-300", !isOpen && "p-2 md:p-3")}>
+    <div className={cn("p-4 md:p-6 border-t border-border transition-all duration-300", !isOpen && "p-2 md:p-3")}>
         <header 
             className="flex items-center gap-3 cursor-pointer"
             onClick={onToggle}
@@ -31,7 +31,7 @@ export default function AbacusTool({ onAddAbacus, isOpen, onToggle }: AbacusTool
 
       {isOpen && (
         <div className="mt-6">
-            <Button id="tutorial-add-abacus-btn" onClick={onAddAbacus} size="lg" className="w-full text-base font-semibold group text-white">
+            <Button onClick={onAddAbacus} size="lg" className="w-full text-base font-semibold group text-white">
                 <Plus className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-90" /> Añadir Ábaco
             </Button>
         </div>

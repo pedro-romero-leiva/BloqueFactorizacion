@@ -81,12 +81,10 @@ export default function Canvas({
 
   return (
     <div
-      id="canvas"
       ref={canvasRef}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       className="w-full h-full relative overflow-hidden"
-      data-testid="canvas"
     >
       {blocks.map((block) => (
         <BlockComponent
