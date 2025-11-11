@@ -22,7 +22,6 @@ const AbacusRowComponent: React.FC<AbacusRowProps> = ({ row, color, onBeadChange
   };
 
   const handleSubtract = () => {
-    // Allow going to -1 temporarily to trigger borrow logic in the parent
     onBeadChange(row.beads - 1);
   };
 

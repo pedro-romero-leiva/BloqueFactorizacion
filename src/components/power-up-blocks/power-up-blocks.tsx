@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { Block, PowerBlock, SimpleBlock, ProductBlock, MoldBlock, NumberBlock, MoldType, CubeMoldBlock, SquareMoldBlock, AbacusBlock, AbacusRow } from "@/types/blocks";
 import { getFactors, isValidFactor } from "@/lib/math-utils";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +9,7 @@ import Canvas from "./canvas";
 import Controls from "./controls";
 import PerfectMold from './perfect-mold';
 import AbacusTool from "./abacus-tool";
+import Tutorial from "./tutorial";
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,11 @@ import { Label } from "@/components/ui/label";
 
 const GRID_SIZE = 20;
 
-export default function PowerUpBlocks() {
+interface PowerUpBlocksProps {
+  startInTutorialMode?: boolean;
+}
+
+export default function PowerUpBlocks({ startInTutorialMode = false }: PowerUpBlocksProps) {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -36,6 +41,17 @@ export default function PowerUpBlocks() {
     block: null,
     customFactor: '',
   });
+
+  const [isTutorialActive, setTutorialActive] = useState(false);
+  
+  useEffect(() => {
+    // Only trigger this when the prop changes to true
+    if (startInTutorialMode) {
+      setBlocks([]); // Clear blocks when starting tutorial
+      setTutorialActive(true);
+    }
+  }, [startInTutorialMode]);
+
 
   const getNextGridPosition = useCallback((baseX: number, baseY: number) => {
     return {
@@ -58,7 +74,13 @@ export default function PowerUpBlocks() {
         x,
         y,
       };
-      setBlocks((prev) => [...prev, newBlock]);
+      setBlocks((prev) => {
+        const newBlocks = [...prev, newBlock];
+        window.dispatchEvent(new CustomEvent('tutorial:block-created', {
+            detail: { totalBlocks: newBlocks.filter(b => b.type !== 'mold' && b.type !== 'abacus').length }
+        }));
+        return newBlocks;
+      });
     },
     [getNextGridPosition]
   );
@@ -88,7 +110,6 @@ export default function PowerUpBlocks() {
           id: `mold-${Date.now()}`,
           type: 'mold',
           moldType: 'cubo',
-          side,
           side: side,
           capacity: side * side * side,
           filledById: null,
@@ -99,6 +120,7 @@ export default function PowerUpBlocks() {
         } as CubeMoldBlock;
       }
       setBlocks((prev) => [...prev, newMold]);
+      window.dispatchEvent(new CustomEvent('tutorial:mold-created'));
   }, [getNextGridPosition]);
 
   const handleAddAbacus = useCallback(() => {
@@ -114,6 +136,7 @@ export default function PowerUpBlocks() {
       y,
     };
     setBlocks(prev => [...prev, newAbacus]);
+    window.dispatchEvent(new CustomEvent('tutorial:abacus-created'));
   }, [getNextGridPosition]);
 
   const handleAbacusChange = useCallback((updatedAbacus: AbacusBlock) => {
@@ -146,9 +169,11 @@ export default function PowerUpBlocks() {
                 // Borrow down to the target row
                 for (let i = sourceRowIndex; i > rowIndexToBorrow; i--) {
                     newRows[i].beads -= 1;
-                    newRows[i-1].beads += 10;
+                    if(newRows[i-1]) {
+                      newRows[i-1].beads += 10;
+                    }
                 }
-                borrowNeeded = true; // Check if more borrowing is needed
+                borrowNeeded = newRows.some(r => r.beads < 0); 
             } else {
                 // Cannot borrow, revert change
                 newRows[rowIndexToBorrow].beads = 0;
@@ -172,7 +197,12 @@ export default function PowerUpBlocks() {
                     newRows[index + 1].beads += carryAmount;
                 } else {
                     const nextRowValue = row.value * 10;
-                    newRows.push({ value: nextRowValue, beads: carryAmount });
+                    if (!newRows.some(r => r.value === nextRowValue)) {
+                        newRows.push({ value: nextRowValue, beads: carryAmount });
+                    } else {
+                        const existingNextRow = newRows.find(r => r.value === nextRowValue);
+                        if (existingNextRow) existingNextRow.beads += carryAmount;
+                    }
                 }
             }
         });
@@ -297,6 +327,7 @@ export default function PowerUpBlocks() {
         newBlock1,
         newBlock2,
       ]);
+      window.dispatchEvent(new CustomEvent('tutorial:block-factored'));
   }, [toast]);
 
   const handleManualFactor = useCallback(() => {
@@ -374,6 +405,7 @@ export default function PowerUpBlocks() {
           newBlock1,
           newBlock2,
         ]);
+        window.dispatchEvent(new CustomEvent('tutorial:block-factored'));
         return;
       }
       
@@ -412,6 +444,7 @@ export default function PowerUpBlocks() {
           newBlock1,
           newBlock2,
         ]);
+        window.dispatchEvent(new CustomEvent('tutorial:block-factored'));
         return;
       }
 
@@ -427,7 +460,7 @@ export default function PowerUpBlocks() {
 
       if (!dragged || !target) return;
       
-      // Consume block into Abacus
+      // Sum block into Abacus
       if (dragged.type !== 'abacus' && target.type === 'abacus') {
         const numberBlock = dragged as NumberBlock;
         const abacusBlock = target as AbacusBlock;
@@ -485,7 +518,6 @@ export default function PowerUpBlocks() {
               ...moldBlock,
               filledValue: newValue,
               surplus: surplus,
-              // We lose the original block type info on multiplication
               originalBlockType: 'product',
               originalBlockState: undefined,
             } : b)
@@ -496,17 +528,20 @@ export default function PowerUpBlocks() {
         // Fill if mold is empty
         const surplus = Math.max(0, numberBlock.value - moldBlock.capacity);
         
-        setBlocks(prev => prev
-          .filter(b => b.id !== draggedId)
-          .map(b => b.id === targetId ? {
-            ...moldBlock,
-            filledById: numberBlock.id,
-            filledValue: numberBlock.value,
-            surplus: surplus,
-            originalBlockType: numberBlock.type,
-            originalBlockState: numberBlock.type !== 'simple' ? numberBlock : undefined,
-          } : b)
-        );
+        setBlocks(prev => {
+          const updatedBlocks = prev
+            .filter(b => b.id !== draggedId)
+            .map(b => b.id === targetId ? {
+              ...moldBlock,
+              filledById: numberBlock.id,
+              filledValue: numberBlock.value,
+              surplus: surplus,
+              originalBlockType: numberBlock.type,
+              originalBlockState: numberBlock.type !== 'simple' ? numberBlock : undefined,
+            } : b)
+          window.dispatchEvent(new CustomEvent('tutorial:block-placed-in-mold'));
+          return updatedBlocks;
+        });
 
         return;
       }
@@ -558,6 +593,7 @@ export default function PowerUpBlocks() {
         };
         setBlocks([...remainingBlocks, newBlock]);
       }
+      window.dispatchEvent(new CustomEvent('tutorial:blocks-merged'));
     },
     [blocks, toast, handleAbacusChange]
   );
@@ -566,6 +602,7 @@ export default function PowerUpBlocks() {
     setBlocks((prev) =>
       prev.map((b) => (b.id === blockId ? { ...b, x, y } : b))
     );
+    window.dispatchEvent(new CustomEvent('tutorial:block-dragged'));
   }, []);
   
   const handleBlockDelete = useCallback((blockId: string) => {
@@ -598,25 +635,31 @@ export default function PowerUpBlocks() {
             "flex-shrink-0 bg-card/80 backdrop-blur-sm border-r border-border/50 flex flex-col transition-all duration-300",
             arePanelsOpen ? "w-full md:w-[400px]" : "w-auto"
         )}>
-        <Controls 
-          onAddBlock={handleAddBlock}
-          isOpen={isBlocksPanelOpen}
-          onToggle={() => setBlocksPanelOpen(prev => !prev)}
-          factorMode={factorMode}
-          onFactorModeChange={setFactorMode}
-        />
-        <PerfectMold
-          onAddMold={handleAddMold}
-          isOpen={isMoldsPanelOpen}
-          onToggle={() => setMoldsPanelOpen(prev => !prev)}
-        />
-        <AbacusTool
-          onAddAbacus={handleAddAbacus}
-          isOpen={isAbacusPanelOpen}
-          onToggle={() => setAbacusPanelOpen(prev => !prev)}
-        />
+        <div id="tutorial-blocks-panel">
+          <Controls 
+            onAddBlock={handleAddBlock}
+            isOpen={isBlocksPanelOpen}
+            onToggle={() => setBlocksPanelOpen(prev => !prev)}
+            factorMode={factorMode}
+            onFactorModeChange={setFactorMode}
+          />
+        </div>
+        <div id="tutorial-molds-panel">
+          <PerfectMold
+            onAddMold={handleAddMold}
+            isOpen={isMoldsPanelOpen}
+            onToggle={() => setMoldsPanelOpen(prev => !prev)}
+          />
+        </div>
+        <div id="tutorial-abacus-panel">
+          <AbacusTool
+            onAddAbacus={handleAddAbacus}
+            isOpen={isAbacusPanelOpen}
+            onToggle={() => setAbacusPanelOpen(prev => !prev)}
+          />
+        </div>
       </div>
-      <div className="flex-1 relative" ref={canvasRef}>
+      <div className="flex-1 relative" ref={canvasRef} data-testid="canvas">
         <Canvas
           blocks={blocks}
           onBlockClick={handleBlockClick}
@@ -628,6 +671,7 @@ export default function PowerUpBlocks() {
           onAbacusChange={handleAbacusChange}
           onAbacusExport={handleAbacusExport}
         />
+        {isTutorialActive && <Tutorial onExit={() => setTutorialActive(false)} />}
       </div>
       
       <AlertDialog open={factoringModalState.isOpen} onOpenChange={(isOpen) => setFactoringModalState(prev => ({...prev, isOpen}))}>

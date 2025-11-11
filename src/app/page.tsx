@@ -8,6 +8,12 @@ import { cn } from '@/lib/utils';
 
 export default function Home() {
   const [appVisible, setAppVisible] = useState(false);
+  const [startTutorial, setStartTutorial] = useState(false);
+
+  const handleStart = (tutorial: boolean) => {
+    setStartTutorial(tutorial);
+    setAppVisible(true);
+  };
 
   return (
     <main className="bg-background min-h-screen text-foreground overflow-hidden relative">
@@ -16,9 +22,9 @@ export default function Home() {
         appVisible ? "opacity-100" : "opacity-0 pointer-events-none"
       )}>
         <Particles />
-        <PowerUpBlocks />
+        <PowerUpBlocks startInTutorialMode={startTutorial} />
       </div>
-      {!appVisible && <WelcomeScreen onStart={() => setAppVisible(true)} />}
+      {!appVisible && <WelcomeScreen onStart={handleStart} />}
     </main>
   );
 }

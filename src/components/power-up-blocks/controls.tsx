@@ -56,8 +56,17 @@ export default function Controls({
     form.resetField("number");
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    form.setValue('number', e.target.valueAsNumber);
+    if (e.target.value !== '') {
+        window.dispatchEvent(new CustomEvent('tutorial:number-entered', {
+            detail: { value: e.target.value }
+        }));
+    }
+  }
+
   return (
-    <div className={cn("p-4 md:p-6 transition-all duration-300", !isOpen && "p-2 md:p-3")}>
+    <div data-testid="controls-panel" className={cn("p-4 md:p-6 transition-all duration-300", !isOpen && "p-2 md:p-3")}>
         <header 
             className="flex items-center justify-between gap-3"
         >
@@ -97,9 +106,11 @@ export default function Controls({
                       <FormLabel>Ingresa un número</FormLabel>
                       <FormControl>
                           <Input
+                          id="tutorial-number-input"
                           type="number"
                           placeholder="ej., 5"
                           {...field}
+                          onChange={handleInputChange}
                           autoComplete="off"
                           className="text-base"
                           />
@@ -108,7 +119,7 @@ export default function Controls({
                       </FormItem>
                   )}
                   />
-                  <Button type="submit" className="w-full text-base font-semibold group" size="lg">
+                  <Button id="tutorial-add-block-btn" type="submit" className="w-full text-base font-semibold group" size="lg">
                   <Plus className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-90" /> Añadir Bloque
                   </Button>
               </form>
